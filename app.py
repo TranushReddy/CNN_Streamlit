@@ -122,21 +122,14 @@ st.subheader("Model Performance")
 
 try:
 
-    if len(y_test.shape) == 1:
-        y_test_cat = np.eye(10)[y_test]
-    else:
-        y_test_cat = y_test
+    from tensorflow.keras.utils import to_categorical
 
-    loss, accuracy = model.evaluate(
-        x_test,
-        y_test_cat,
-        verbose=0,
-    )
+    y_test_cat = to_categorical(y_test, 10)
 
-    st.metric(
-        "Test Accuracy",
-        f"{accuracy:.4f}",
-    )
+    loss, accuracy = model.evaluate(x_test, y_test_cat, verbose=0)
+
+    st.metric("Test Accuracy", f"{accuracy * 100:.2f}%")
+    st.metric("Test Loss", f"{loss:.4f}")
 
 except Exception as e:
 
