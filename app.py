@@ -15,7 +15,7 @@ st.write("Predict image classes using a pre-trained CNN model")
 
 @st.cache_resource
 def load_model():
-    return joblib.load("model/cifar10_cnn_model.pkl")
+    return joblib.load("model/cifar10_cnn_model.keras")
 
 
 # ---------------- LOAD DATA ----------------
