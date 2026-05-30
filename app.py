@@ -1,7 +1,8 @@
 import streamlit as st
-import joblib
 import numpy as np
+import joblib
 import matplotlib.pyplot as plt
+from tensorflow.keras.models import load_model
 
 # ---------------- PAGE CONFIG ----------------
 
@@ -14,8 +15,8 @@ st.write("Predict image classes using a pre-trained CNN model")
 
 
 @st.cache_resource
-def load_model():
-    return joblib.load("model/cifar10_cnn_model.keras")
+def load_cnn_model():
+    return load_model("model/cifar10_cnn_model.keras")
 
 
 # ---------------- LOAD DATA ----------------
@@ -26,7 +27,7 @@ def load_data():
     return joblib.load("data/cifar10_test.pkl")
 
 
-model = load_model()
+model = load_cnn_model()
 x_test, y_test = load_data()
 
 # ---------------- PREPROCESS ----------------
@@ -51,14 +52,17 @@ class_names = [
 st.sidebar.header("Image Selection")
 
 image_index = st.sidebar.slider(
-    "Choose Test Image", min_value=0, max_value=len(x_test) - 1, value=0
+    "Choose Test Image",
+    min_value=0,
+    max_value=len(x_test) - 1,
+    value=0,
 )
 
 # ---------------- DISPLAY IMAGE ----------------
 
 selected_image = x_test[image_index]
 
-col1, col2 = st.columns([1, 1])
+col1, col2 = st.columns(2)
 
 with col1:
     st.subheader("Selected Image")
@@ -68,7 +72,7 @@ with col1:
 
 input_image = np.expand_dims(selected_image, axis=0)
 
-prediction = model.predict(input_image)
+prediction = model.predict(input_image, verbose=0)
 
 predicted_class = np.argmax(prediction)
 
@@ -89,7 +93,7 @@ st.subheader("Predictions on Sample Images")
 sample_images = x_test[:10]
 sample_labels = y_test[:10].flatten()
 
-preds = model.predict(sample_images)
+preds = model.predict(sample_images, verbose=0)
 pred_labels = np.argmax(preds, axis=1)
 
 fig, axes = plt.subplots(2, 5, figsize=(15, 6))
@@ -102,7 +106,7 @@ for i in range(10):
 
     ax.set_title(
         f"P: {class_names[pred_labels[i]]}\nT: {class_names[sample_labels[i]]}",
-        fontsize=9,
+        fontsize=8,
     )
 
     ax.axis("off")
@@ -114,16 +118,26 @@ st.pyplot(fig)
 # ---------------- ACCURACY ----------------
 
 st.markdown("---")
-
 st.subheader("Model Performance")
 
 try:
-    loss, accuracy = model.evaluate(x_test, np.eye(10)[y_test.flatten()], verbose=0)
 
-    st.metric("Test Accuracy", f"{accuracy:.4f}")
+    if len(y_test.shape) == 1:
+        y_test_cat = np.eye(10)[y_test]
+    else:
+        y_test_cat = y_test
 
-except:
-    st.warning(
-        "Accuracy could not be calculated because the loaded model "
-        "does not support evaluate()."
+    loss, accuracy = model.evaluate(
+        x_test,
+        y_test_cat,
+        verbose=0,
     )
+
+    st.metric(
+        "Test Accuracy",
+        f"{accuracy:.4f}",
+    )
+
+except Exception as e:
+
+    st.warning(f"Could not compute accuracy.\n\n{e}")
