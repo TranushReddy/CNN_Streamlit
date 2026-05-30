@@ -120,9 +120,6 @@ st.pyplot(fig)
 st.markdown("---")
 st.subheader("Model Performance")
 
-st.markdown("---")
-st.subheader("Model Performance")
-
 try:
     predictions = model.predict(x_test, verbose=0)
 
