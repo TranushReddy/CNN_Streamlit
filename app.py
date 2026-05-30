@@ -120,17 +120,19 @@ st.pyplot(fig)
 st.markdown("---")
 st.subheader("Model Performance")
 
+st.markdown("---")
+st.subheader("Model Performance")
+
 try:
+    predictions = model.predict(x_test, verbose=0)
 
-    from tensorflow.keras.utils import to_categorical
+    pred_labels = np.argmax(predictions, axis=1)
 
-    y_test_cat = to_categorical(y_test, 10)
+    true_labels = y_test.flatten()
 
-    loss, accuracy = model.evaluate(x_test, y_test_cat, verbose=0)
+    accuracy = np.mean(pred_labels == true_labels)
 
-    st.metric("Test Accuracy", f"{accuracy * 100:.2f}%")
-    st.metric("Test Loss", f"{loss:.4f}")
+    st.metric("Test Accuracy", f"{accuracy:.4f}")
 
 except Exception as e:
-
-    st.warning(f"Could not compute accuracy.\n\n{e}")
+    st.error(f"Error calculating accuracy: {e}")
