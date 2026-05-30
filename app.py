@@ -1,79 +1,37 @@
-import joblib
 import streamlit as st
+import joblib
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras.datasets import cifar10
 
-# Load the trained model
-model = joblib.load(
-    "C:\\Users\\tranu\\Desktop\\Tekwork-2\\CNN_Streamlit\\model\\cifar10_cnn_model.pkl"
-)
+# ---------------- PAGE CONFIG ----------------
 
-# Load the CIFAR-10 dataset
-(x_train, y_train), (x_test, y_test) = cifar10.load_data()
+st.set_page_config(page_title="CNN CIFAR-10 Classifier", layout="wide")
 
-# Normalize the data
-x_train = x_train.astype("float32") / 255.0
+st.title("Image Classification")
+st.write("Predict image classes using a pre-trained CNN model")
+
+# ---------------- LOAD MODEL ----------------
+
+
+@st.cache_resource
+def load_model():
+    return joblib.load("model/cifar10_cnn_model.pkl")
+
+
+# ---------------- LOAD DATA ----------------
+
+
+@st.cache_data
+def load_data():
+    return joblib.load("data/cifar10_test.pkl")
+
+
+model = load_model()
+x_test, y_test = load_data()
+
+# ---------------- PREPROCESS ----------------
+
 x_test = x_test.astype("float32") / 255.0
-
-
-# one hot encode the labels
-y_train = keras.utils.to_categorical(y_train, 10)
-y_test = keras.utils.to_categorical(y_test, 10)
-
-# Define class names for CIFAR-10
-class_names = [
-    "airplane",
-    "automobile",
-    "bird",
-    "cat",
-    "deer",
-    "dog",
-    "frog",
-    "horse",
-    "ship",
-    "truck",
-]
-
-# Streamlit app
-st.title("Image Classification with CNN")
-
-# Select an image from the test set
-image_index = st.slider(
-    "Select an image index from the test set", 0, len(x_test) - 1, 0
-)
-selected_image = x_test[image_index]
-
-# Display the selected image
-st.image(
-    selected_image,
-    caption=f"Selected Image Index: {image_index}",
-    use_column_width=True,
-)
-
-# Preprocess the image for prediction
-input_image = np.expand_dims(selected_image, axis=0)
-
-# Make a prediction using the loaded model
-predictions = model.predict(input_image)
-predicted_class = np.argmax(predictions)
-
-# Display the predicted class
-st.write(f"Predicted Class: {class_names[predicted_class]}")
-
-# Display the true class
-true_class = np.argmax(y_test[image_index])
-st.write(f"True Class: {class_names[true_class]}")
-
-# Display the accuracy of the model on the test set
-test_loss, test_acc = model.evaluate(x_test, y_test, verbose=0)
-st.write(f"Test Accuracy: {test_acc:.4f}")
-st.subheader("Predictions on Sample Test Images")
 
 class_names = [
     "Airplane",
@@ -88,18 +46,84 @@ class_names = [
     "Truck",
 ]
 
-images = x_test[:10]
-true_labels = np.argmax(y_test[:10], axis=1)
+# ---------------- SIDEBAR ----------------
 
-preds = model.predict(images)
+st.sidebar.header("Image Selection")
+
+image_index = st.sidebar.slider(
+    "Choose Test Image", min_value=0, max_value=len(x_test) - 1, value=0
+)
+
+# ---------------- DISPLAY IMAGE ----------------
+
+selected_image = x_test[image_index]
+
+col1, col2 = st.columns([1, 1])
+
+with col1:
+    st.subheader("Selected Image")
+    st.image(selected_image, width=300)
+
+# ---------------- PREDICTION ----------------
+
+input_image = np.expand_dims(selected_image, axis=0)
+
+prediction = model.predict(input_image)
+
+predicted_class = np.argmax(prediction)
+
+true_class = int(y_test[image_index])
+
+with col2:
+    st.subheader("Prediction Result")
+
+    st.success(f"Predicted Class: {class_names[predicted_class]}")
+
+    st.info(f"True Class: {class_names[true_class]}")
+
+# ---------------- SAMPLE PREDICTIONS ----------------
+
+st.markdown("---")
+st.subheader("Predictions on Sample Images")
+
+sample_images = x_test[:10]
+sample_labels = y_test[:10].flatten()
+
+preds = model.predict(sample_images)
 pred_labels = np.argmax(preds, axis=1)
 
-fig, ax = plt.subplots(2, 5, figsize=(15, 5))
+fig, axes = plt.subplots(2, 5, figsize=(15, 6))
+
 for i in range(10):
-    ax[i // 5, i % 5].imshow(images[i])
-    ax[i // 5, i % 5].set_title(
-        f"Pred: {class_names[pred_labels[i]]}\nTrue: {class_names[true_labels[i]]}"
+
+    ax = axes[i // 5, i % 5]
+
+    ax.imshow(sample_images[i])
+
+    ax.set_title(
+        f"P: {class_names[pred_labels[i]]}\nT: {class_names[sample_labels[i]]}",
+        fontsize=9,
     )
-    ax[i // 5, i % 5].axis("off")
-fig.tight_layout()
+
+    ax.axis("off")
+
+plt.tight_layout()
+
 st.pyplot(fig)
+
+# ---------------- ACCURACY ----------------
+
+st.markdown("---")
+
+st.subheader("Model Performance")
+
+try:
+    loss, accuracy = model.evaluate(x_test, np.eye(10)[y_test.flatten()], verbose=0)
+
+    st.metric("Test Accuracy", f"{accuracy:.4f}")
+
+except:
+    st.warning(
+        "Accuracy could not be calculated because the loaded model "
+        "does not support evaluate()."
+    )
